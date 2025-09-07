@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>블로그 글 및 인포그래픽 제작 툴</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f9f4f1;
+        }
+
+        .container {
+            max-width: 900px;
+        }
+
+        .input-group label {
+            font-weight: 700;
+        }
+
+        .preview-content {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* Custom message box for notifications */
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background-color: #67a697;
+            color: white;
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 1000;
+        }
+
+        .message-box.show {
+            opacity: 1;
+        }
+
+        .button-loading {
+            position: relative;
+        }
+
+        .button-loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin: -8px 0 0 -8px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-[#f9f4f1] p-8 text-[#444444]">
+    <div class="container mx-auto p-8 bg-white rounded-2xl shadow-xl">
+        <h1 class="text-4xl font-bold text-center text-[#444444] mb-8">블로그 글 및 인포그래픽 제작 툴</h1>
+        <p class="text-center text-lg mb-8">블로그 글에 필요한 정보를 입력하면, 인포그래픽과 완성된 글을 만들어 드려요.</p>
+        
+        <!-- Login Page -->
+        <div id="login-page" class="flex flex-col items-center justify-center min-h-[500px] space-y-6">
+            <h2 class="text-3xl font-bold text-[#444444]">접근 코드를 입력하세요</h2>
+            <input type="password" id="accessCode" class="w-full max-w-sm p-3 rounded-lg border-2 border-[#67a697] focus:outline-none focus:ring-2 focus:ring-[#67a697]" placeholder="코드를 입력하세요">
+            <button id="loginButton" class="w-full max-w-sm py-3 bg-[#67a697] text-white text-lg font-bold rounded-lg shadow-md hover:bg-[#5b8c80] transition-colors">접속하기</button>
+        </div>
+
+        <!-- Main Content Page -->
+        <div id="main-page" class="space-y-4 hidden">
+            <div class="mb-8 space-y-4">
+                <label for="mainTopic" class="block text-xl font-bold mb-2">블로그 주제를 한 문장으로 입력하세요 (AI가 분석합니다)</label>
+                <input type="text" id="mainTopic" value="손가락 건초염에 대한 40대 타겟 블로그 글"
+                    class="w-full p-3 rounded-lg border-2 border-[#67a697] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                    placeholder="예: 40대 주부의 불면증 극복기">
+                <div class="flex space-x-4">
+                    <button id="aiGenerateButton"
+                        class="w-1/2 py-3 bg-[#67a697] text-white text-lg font-bold rounded-lg shadow-md hover:bg-[#5b8c80] transition-colors">AI에게 맡기기</button>
+                    <button id="resetButton"
+                        class="w-1/2 py-3 bg-[#f2e6d9] text-[#444444] text-lg font-bold rounded-lg shadow-md hover:bg-[#d9d9d9] transition-colors">초기화</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- 입력 폼 -->
+                <div class="space-y-6">
+                    <div class="input-group">
+                        <label for="topic" class="block text-xl font-bold mb-2">1. 블로그 글의 핵심 주제</label>
+                        <input type="text" id="topic" value="손가락 건초염"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 손가락 건초염, 불면증, 탈모">
+                    </div>
+                    <div class="input-group">
+                        <label for="persona" class="block text-xl font-bold mb-2">2. 글쓴이의 페르소나</label>
+                        <input type="text" id="persona" value="10년차 환경연구원"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 10년차 환경연구원, 육아맘">
+                    </div>
+                    <div class="input-group">
+                        <label for="duration" class="block text-xl font-bold mb-2">3. 고통받은 기간</label>
+                        <input type="text" id="duration" value="6년간"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 6년간, 수년간">
+                    </div>
+                    <div class="input-group">
+                        <label for="cause" class="block text-xl font-bold mb-2">4. 문제의 근본적인 원인</label>
+                        <input type="text" id="cause" value="염증"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 염증, 스트레스">
+                    </div>
+                    <div class="input-group">
+                        <label for="badMethod" class="block text-xl font-bold mb-2">5. 효과 없었던 잘못된 방법</label>
+                        <input type="text" id="badMethod" value="보호대, 주사"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 보호대, 주사, 수면제">
+                    </div>
+                    <div class="input-group">
+                        <label for="goodMethod" class="block text-xl font-bold mb-2">6. 가장 효과 좋았던 방법</label>
+                        <input type="text" id="goodMethod" value="유황 성분 크림"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 유황 성분 크림, 명상법">
+                    </div>
+                    <div class="input-group">
+                        <label for="keyword" class="block text-xl font-bold mb-2">7. 해결책의 가장 중요한 키워드</label>
+                        <input type="text" id="keyword" value="식이유황의 등급과 함량"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 식이유황의 등급과 함량">
+                    </div>
+                    <div class="input-group">
+                        <label for="cost" class="block text-xl font-bold mb-2">8. 문제를 해결하기 위해 쓴 금액</label>
+                        <input type="text" id="cost" value="천만원 이상"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 천만원 이상, 수백만원">
+                    </div>
+                    <div class="input-group">
+                        <label for="incident" class="block text-xl font-bold mb-2">9. 가장 절망적인 사건</label>
+                        <input type="text" id="incident" value="수술 후 재발, 가족과의 평범한 일상 파괴"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 수술 후 재발, 가족과의 일상 파괴">
+                    </div>
+                    <div class="input-group">
+                        <label for="reason" class="block text-xl font-bold mb-2">10. 글을 쓰는 이유</label>
+                        <input type="text" id="reason" value="나처럼 고통받는 사람들을 돕기 위해"
+                            class="w-full p-3 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"
+                            placeholder="예: 나처럼 고통받는 사람들을 돕기 위해">
+                    </div>
+                </div>
+
+                <!-- 미리보기 및 인포그래픽 -->
+                <div class="space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-bold mb-4">인포그래픽 미리보기</h2>
+                        <div class="p-4 bg-[#f2e6d9] rounded-2xl shadow-inner min-h-[256px] flex items-center justify-center">
+                            <canvas id="infographicChart" class="w-full h-64"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold mb-4">블로그 글 미리보기</h2>
+                        <div class="p-6 bg-[#f2e6d9] rounded-2xl shadow-inner preview-content">
+                            블로그 글 내용이 여기에 표시됩니다.
+                        </div>
+                    </div>
+                    <button id="copyButton"
+                        class="w-full py-3 bg-[#67a697] text-white text-lg font-bold rounded-lg shadow-md hover:bg-[#5b8c80] transition-colors">블로그
+                        글 복사하기</button>
+                    <button id="startImageGenButton"
+                        class="w-full py-3 bg-red-500 text-white text-lg font-bold rounded-lg shadow-md hover:bg-red-600 transition-colors">10개의
+                        이미지 제작 시작</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Generation Page -->
+        <div id="image-generation-page" class="hidden text-center space-y-8">
+            <h2 class="text-3xl font-bold mb-4">이미지 제작 (1/10)</h2>
+            <div id="image-container" class="bg-[#f2e6d9] p-6 rounded-2xl shadow-inner min-h-[400px] flex justify-center items-center">
+                <p>이미지가 여기에 생성됩니다.</p>
+            </div>
+            <div id="prompt-display" class="bg-[#f2e6d9] p-4 rounded-lg shadow-inner">
+                <p class="font-bold">이미지 프롬프트 수정하기:</p>
+                <textarea id="prompt-editor" class="w-full h-24 p-2 rounded-lg border-2 border-[#d9d9d9] focus:outline-none focus:ring-2 focus:ring-[#67a697]"></textarea>
+            </div>
+            <div class="flex space-x-4 justify-center">
+                <button id="prevImageButton"
+                    class="py-2 px-6 bg-[#d9d9d9] text-[#444444] rounded-lg shadow-md hover:bg-[#c0c0c0] transition-colors disabled:opacity-50"
+                    disabled>이전</button>
+                <button id="generateSingleImageButton"
+                    class="py-2 px-6 bg-[#67a697] text-white rounded-lg shadow-md hover:bg-[#5b8c80] transition-colors">이미지
+                    생성하기</button>
+                <button id="nextImageButton"
+                    class="py-2 px-6 bg-[#67a697] text-white rounded-lg shadow-md hover:bg-[#5b8c80] transition-colors disabled:opacity-50"
+                    disabled>다음</button>
+            </div>
+            <button id="homeButton"
+                class="py-2 px-6 bg-[#f2e6d9] text-[#444444] rounded-lg shadow-md hover:bg-[#d9d9d9] transition-colors">홈으로</button>
+        </div>
+
+        <!-- Final Review Page -->
+        <div id="final-review-page" class="hidden space-y-8">
+            <h2 class="text-3xl font-bold text-center mb-6">최종 블로그 글 및 이미지</h2>
+            <div class="p-6 bg-[#f2e6d9] rounded-2xl shadow-inner preview-content">
+                <!-- Blog content will be loaded here -->
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="final-image-gallery">
+                <!-- Images will be loaded here -->
+            </div>
+            <div class="text-center mt-8">
+                <button id="backToHomeFromFinal"
+                    class="py-3 px-8 bg-[#67a697] text-white text-lg font-bold rounded-lg shadow-md hover:bg-[#5b8c80] transition-colors">홈으로
+                    돌아가기</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const inputs = document.querySelectorAll('input');
+        const previewDiv = document.querySelector('.preview-content');
+        const copyButton = document.getElementById('copyButton');
+        const chartCanvas = document.getElementById('infographicChart');
+        const aiGenerateButton = document.getElementById('aiGenerateButton');
+        const mainTopicInput = document.getElementById('mainTopic');
+        const resetButton = document.getElementById('resetButton');
+        const startImageGenButton = document.getElementById('startImageGenButton');
+        const mainPage = document.getElementById('main-page');
+        const imageGenPage = document.getElementById('image-generation-page');
+        const finalReviewPage = document.getElementById('final-review-page');
+        const nextImageButton = document.getElementById('nextImageButton');
+        const prevImageButton = document.getElementById('prevImageButton');
+        const homeButton = document.getElementById('homeButton');
+        const generateSingleImageButton = document.getElementById('generateSingleImageButton');
+        const imageContainer = document.getElementById('image-container');
+        const promptEditor = document.getElementById('prompt-editor');
+        const finalContentDiv = finalReviewPage.querySelector('.preview-content');
+        const finalImageGallery = document.getElementById('final-image-gallery');
+        const backToHomeFromFinal = document.getElementById('backToHomeFromFinal');
+        const loginPage = document.getElementById('login-page');
+        const loginInput = document.getElementById('accessCode');
+        const loginButton = document.getElementById('loginButton');
+
+        let infographicChart;
+        let imagePrompts = [];
+        let generatedImages = [];
+        let currentPage = 0;
+        let blogData = {};
+        let blogContentText = '';
+        let infographicData = null;
+
+        function showMessage(message) {
+            const messageBox = document.createElement('div');
+            messageBox.classList.add('message-box');
+            messageBox.textContent = message;
+            document.body.appendChild(messageBox);
+            setTimeout(() => {
+                messageBox.classList.add('show');
+            }, 10);
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+                setTimeout(() => {
+                    messageBox.remove();
+                }, 500);
+            }, 3000);
+        }
+
+        function showPage(pageId) {
+            loginPage.classList.add('hidden');
+            mainPage.classList.add('hidden');
+            imageGenPage.classList.add('hidden');
+            finalReviewPage.classList.add('hidden');
+            document.getElementById(pageId).classList.remove('hidden');
+        }
+
+        // AI 가이드라인 위반 내용 자동 정정 함수
+        function sanitizeContent(text) {
+            let isCorrected = false;
+            // 예시: 특정 키워드를 필터링하고 중립적인 단어로 대체
+            const filterWords = ["위험한", "자극적인", "절대", "최고의"];
+            let sanitizedText = text;
+
+            filterWords.forEach(word => {
+                if (sanitizedText.includes(word)) {
+                    sanitizedText = sanitizedText.replaceAll(word, "안전한"); // 예시로 "안전한"으로 대체
+                    isCorrected = true;
+                }
+            });
+
+            // 예시: 건강 관련 내용은 "의사와 상담하세요"와 같은 문구 추가
+            if (sanitizedText.includes("치료") || sanitizedText.includes("의학적")) {
+                if (!sanitizedText.includes("의사와 상담하세요")) {
+                    sanitizedText += "\n\n*주의: 본 내용은 참고용이며, 정확한 진단 및 치료를 위해서는 반드시 의사와 상담하세요.";
+                    isCorrected = true;
+                }
+            }
+
+            return { text: sanitizedText, isCorrected: isCorrected };
+        }
+
+        function generateContent() {
+            if (!blogData) return;
+
+            const { topic } = blogData;
+            
+            // 인포그래픽 데이터가 유효한지 확인하고 차트 렌더링
+            if (infographicData && topic) {
+                const data = {
+                    labels: infographicData.labels,
+                    datasets: [{
+                        label: '데이터',
+                        data: infographicData.data,
+                        backgroundColor: ['#d9d9d9', '#67a697'],
+                        borderWidth: 1
+                    }]
+                };
+
+                if (infographicChart) {
+                    infographicChart.destroy();
+                }
+                const infographicContainer = chartCanvas.parentElement;
+                infographicContainer.innerHTML = '';
+                infographicChart = new Chart(chartCanvas, {
+                    type: 'bar',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            title: {
+                                display: true,
+                                text: infographicData.title,
+                                font: {
+                                    size: 18,
+                                    family: 'Noto Sans KR'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } else {
+                // 인포그래픽 데이터가 없으면 차트를 비우고 메시지 표시
+                if (infographicChart) {
+                    infographicChart.destroy();
+                    infographicChart = null;
+                }
+                const infographicContainer = chartCanvas.parentElement;
+                infographicContainer.innerHTML = `<p class="text-center text-[#888888]">인포그래픽 제작이 불가능합니다.</p>`;
+            }
+
+            // previewDiv와 finalContentDiv가 null이 아닌지 확인
+            if (previewDiv) {
+                previewDiv.innerHTML = blogContentText.replace(/\n/g, '<br>');
+            }
+            if (finalContentDiv) {
+                finalContentDiv.innerHTML = blogContentText.replace(/\n/g, '<br>');
+            }
+        }
+        
+        function resetAll() {
+            mainTopicInput.value = '';
+            inputs.forEach(input => {
+                input.value = '';
+            });
+            previewDiv.innerHTML = '블로그 글 내용이 여기에 표시됩니다.';
+            finalContentDiv.innerHTML = '';
+            if (infographicChart) {
+                infographicChart.destroy();
+                infographicChart = null;
+            }
+            const infographicContainer = chartCanvas.parentElement;
+            infographicContainer.innerHTML = `<canvas id="infographicChart" class="w-full h-64"></canvas>`;
+            
+            generatedImages = [];
+            imagePrompts = [];
+            currentPage = 0;
+            imageContainer.innerHTML = '<p>이미지가 여기에 생성됩니다.</p>';
+            finalImageGallery.innerHTML = '';
+            showPage('main-page');
+            showMessage('모든 내용이 초기화되었습니다.');
+        }
+
+        function renderImagePage() {
+            if (currentPage >= 0 && currentPage < imagePrompts.length) {
+                document.querySelector('#image-generation-page h2').textContent = `이미지 제작 (${currentPage + 1}/10)`;
+                promptEditor.value = imagePrompts[currentPage].prompt;
+
+                imageContainer.innerHTML = generatedImages[currentPage] 
+                    ? `<img src="${generatedImages[currentPage]}" alt="Image ${currentPage + 1}" class="mx-auto max-w-full max-h-[350px] rounded-lg shadow-md" />`
+                    : '<p>이미지가 여기에 생성됩니다.</p>';
+
+                generateSingleImageButton.textContent = generatedImages[currentPage] ? '다시 생성하기' : '이미지 생성하기';
+                generateSingleImageButton.disabled = false;
+                
+                prevImageButton.disabled = currentPage === 0;
+                nextImageButton.disabled = currentPage === 9 && generatedImages.length < 10;
+                if (currentPage === 9 && generatedImages.length === 10) {
+                    nextImageButton.textContent = "최종 페이지로";
+                } else {
+                    nextImageButton.textContent = "다음";
+                }
+
+            }
+        }
+
+        async function aiGenerateContent() {
+            const mainTopic = mainTopicInput.value.trim();
+            if (!mainTopic) {
+                showMessage("주제를 입력해주세요!");
+                return;
+            }
+
+            aiGenerateButton.disabled = true;
+            aiGenerateButton.textContent = "분석 중...";
+            aiGenerateButton.classList.add("button-loading");
+
+            try {
+                const systemPrompt = "당신은 40대 중년의 고통에 깊이 공감하고, 그들의 문제를 해결해주고 싶은 마음이 간절한 블로그 및 인포그래픽 전문가입니다. 독자들의 실패 경험에 대해 공감하고, 그들이 찾던 진짜 해법을 제시하여 이 블로그에 지속적으로 방문하고 싶게 만드는 글을 작성해야 합니다. 단순히 정보를 나열하는 것을 넘어, 독자의 심리적 상태 변화(절망 -> 깨달음 -> 희망)를 유도하는 스토리텔링을 활용하세요. 한국적인 분위기와 상황에 맞는 만화 이미지 10개에 대한 상세한 프롬프트도 함께 작성해 주세요. 각 프롬프트는 구도, 위치, 인물의 포지션을 정확하게 묘사해야 합니다. 블로그 글은 40대 독자가 읽고 '내 이야기'라고 느낄 수 있도록 진솔하고 깊이 있는 어조로 작성해 주세요. 또한, 핵심 정보를 제공하되, 해결책에 대한 더 깊은 내용은 독자가 추가로 찾아보게끔 유도하는 전략을 포함해야 합니다. 글의 신뢰도를 높이기 위해, 주제에 대한 딥 리서치를 통해 40대 방문객이 가장 궁금해 할 만한 데이터 포인트를 찾아 인포그래픽에 활용할 가상의 데이터를 만들어 주세요. 인포그래픽은 짧고 명확한 제목, 그리고 2~3개의 데이터 포인트로 구성되어야 합니다. 모든 응답은 JSON 형식이어야 합니다. AI가 생성하는 모든 이미지의 주인공은 동일인물(마흔 중반의 고생한 흔적이 있는 한국인 남성)이며, 배경도 일관된 동일한 공간(집안 거실, 침실, 서재 등)을 묘사해야 합니다. 그리고 이미지에 들어가는 대화 문구는 한글로 제작할려고하지말고 예외로 영어로 제작해서 내용 깨짐이 없게 해줘. 블로그 글은 완벽하게 완성된 하나의 글로 작성되어야 하며, 중간에 끊긴 느낌이 없어야 합니다. 인포그래픽의 퀄리티가 낮다고 판단되면, infographicData를 null로 반환해 주세요. 그러면 인포그래픽을 제작하지 않습니다. 만약 특정 주제에 대해 의미 있는 데이터를 찾기 어렵다면 infographicData를 null로 반환할 수 있습니다.";
+                const userQuery = mainTopic;
+                const payload = {
+                    contents: [{
+                        parts: [{
+                            text: userQuery
+                        }]
+                    }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                blogContent: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        topic: { type: "STRING" },
+                                        persona: { type: "STRING" },
+                                        duration: { type: "STRING" },
+                                        cause: { type: "STRING" },
+                                        badMethod: { type: "STRING" },
+                                        goodMethod: { type: "STRING" },
+                                        keyword: { type: "STRING" },
+                                        cost: { type: "STRING" },
+                                        incident: { type: "STRING" },
+                                        reason: { type: "STRING" }
+                                    }
+                                },
+                                blogPost: { type: "STRING" },
+                                infographicData: {
+                                    type: ["OBJECT", "NULL"],
+                                    properties: {
+                                        title: { type: "STRING" },
+                                        labels: {
+                                            type: "ARRAY",
+                                            items: { type: "STRING" }
+                                        },
+                                        data: {
+                                            type: "ARRAY",
+                                            items: { type: "NUMBER" }
+                                        }
+                                    }
+                                },
+                                imagePrompts: {
+                                    type: "ARRAY",
+                                    items: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            prompt: { type: "STRING" },
+                                            description: { type: "STRING" }
+                                        }
+                                    },
+                                    minItems: 10,
+                                    maxItems: 10
+                                }
+                            }
+                        }
+                    },
+                    systemInstruction: {
+                        parts: [{
+                            text: systemPrompt
+                        }]
+                    },
+                };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    throw new Error("API call failed.");
+                }
+                const result = await response.json();
+                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!jsonText) {
+                    throw new Error("API response is not valid JSON.");
+                }
+                const data = JSON.parse(jsonText);
+                
+                if (!data || !data.blogContent || !data.blogPost || !data.imagePrompts) {
+                    throw new Error("Invalid data structure from API.");
+                }
+                
+                // AI 생성물 자동 정정 기능
+                let isCorrected = false;
+                
+                const sanitizedPost = sanitizeContent(data.blogPost);
+                if (sanitizedPost.isCorrected) {
+                    data.blogPost = sanitizedPost.text;
+                    isCorrected = true;
+                }
+
+                data.imagePrompts.forEach(item => {
+                    const sanitizedPrompt = sanitizeContent(item.prompt);
+                    if (sanitizedPrompt.isCorrected) {
+                        item.prompt = sanitizedPrompt.text;
+                        isCorrected = true;
+                    }
+                });
+                
+                if (isCorrected) {
+                    showMessage("AI 생성 내용이 가이드라인에 따라 자동 정정되었습니다.");
+                }
+
+                blogData = data.blogContent;
+                blogContentText = data.blogPost;
+                infographicData = data.infographicData;
+                imagePrompts = data.imagePrompts;
+                generatedImages = Array(10).fill(null);
+
+                document.getElementById('topic').value = blogData.topic;
+                document.getElementById('persona').value = blogData.persona;
+                document.getElementById('duration').value = blogData.duration;
+                document.getElementById('cause').value = blogData.cause;
+                document.getElementById('badMethod').value = blogData.badMethod;
+                document.getElementById('goodMethod').value = blogData.goodMethod;
+                document.getElementById('keyword').value = blogData.keyword;
+                document.getElementById('cost').value = blogData.cost;
+                document.getElementById('incident').value = blogData.incident;
+                document.getElementById('reason').value = blogData.reason;
+
+                generateContent();
+                showMessage("블로그 글이 분석 및 작성되었습니다! 이제 이미지 제작을 시작할 수 있습니다.");
+            } catch (error) {
+                console.error("Error during AI generation:", error);
+                showMessage("AI 생성에 실패했습니다. 다시 시도해 주세요.");
+            } finally {
+                aiGenerateButton.disabled = false;
+                aiGenerateButton.textContent = "AI에게 맡기기";
+                aiGenerateButton.classList.remove("button-loading");
+            }
+        }
+
+        async function generateSingleImage() {
+            generateSingleImageButton.disabled = true;
+            generateSingleImageButton.textContent = "생성 중...";
+            generateSingleImageButton.classList.add("button-loading");
+            imageContainer.innerHTML = '<div class="button-loading text-lg"></div><p class="mt-4">이미지 생성 중...</p>';
+
+            const currentImagePrompt = promptEditor.value;
+            const prompt = `A Korean style comic illustration: ${currentImagePrompt}`;
+
+            const payload = {
+                instances: [{ prompt: prompt }],
+                parameters: { sampleCount: 1 }
+            };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                    const base64Data = result.predictions[0].bytesBase64Encoded;
+                    const imageUrl = `data:image/png;base64,${base64Data}`;
+                    generatedImages[currentPage] = imageUrl;
+                    imageContainer.innerHTML = `<img src="${imageUrl}" alt="Generated Image ${currentPage + 1}" class="mx-auto max-w-full max-h-[350px] rounded-lg shadow-md" />`;
+                    showMessage(`이미지 ${currentPage + 1}이 생성되었습니다!`);
+                } else {
+                    imageContainer.innerHTML = '<p>이미지 생성 실패. 다시 시도해 주세요.</p>';
+                    showMessage("이미지 생성 실패!");
+                }
+            } catch (error) {
+                console.error('Error generating image:', error);
+                imageContainer.innerHTML = '<p>이미지 생성 중 오류가 발생했습니다. 다시 시도해 주세요.</p>';
+                showMessage("이미지 생성 중 오류 발생!");
+            } finally {
+                generateSingleImageButton.disabled = false;
+                generateSingleImageButton.textContent = generatedImages[currentPage] ? '다시 생성하기' : '이미지 생성하기';
+                generateSingleImageButton.classList.remove("button-loading");
+                nextImageButton.disabled = currentPage === 9 && generatedImages.length < 10;
+                if (currentPage === 9 && generatedImages.length === 10) {
+                    nextImageButton.textContent = "최종 페이지로";
+                } else {
+                    nextImageButton.textContent = "다음";
+                }
+            }
+        }
+
+        function renderFinalPage() {
+            finalImageGallery.innerHTML = '';
+            generatedImages.forEach((src, index) => {
+                if (src) {
+                    const imgElement = document.createElement('img');
+                    imgElement.src = src;
+                    imgElement.alt = `Generated Image ${index + 1}`;
+                    imgElement.className = "w-full h-auto rounded-lg shadow-md";
+                    finalImageGallery.appendChild(imgElement);
+                }
+            });
+            showPage('final-review-page');
+        }
+
+        // Event Listeners
+        loginButton.addEventListener('click', () => {
+            if (loginInput.value === 'blog2025') {
+                showPage('main-page');
+                showMessage('로그인 성공! 환영합니다.');
+            } else {
+                showMessage('잘못된 코드입니다. 다시 시도해주세요.');
+            }
+        });
+
+        // input 요소에 'change' 이벤트 대신 'input' 이벤트를 사용하고
+        // AI 생성 기능과는 분리합니다.
+        // generateContent()는 AI 생성 후에만 호출됩니다.
+        mainTopicInput.addEventListener('input', (e) => {
+            // "blog2025" 입력 시 초기화 기능은 그대로 유지
+            if (e.target.value.toLowerCase() === 'blog2025') {
+                resetAll();
+            }
+        });
+
+        aiGenerateButton.addEventListener('click', aiGenerateContent);
+        resetButton.addEventListener('click', resetAll);
+        startImageGenButton.addEventListener('click', () => {
+            if (imagePrompts.length > 0) {
+                currentPage = 0;
+                showPage('image-generation-page');
+                renderImagePage();
+            } else {
+                showMessage("먼저 AI 분석을 완료해주세요.");
+            }
+        });
+        nextImageButton.addEventListener('click', () => {
+            if (currentPage < imagePrompts.length - 1) {
+                currentPage++;
+                renderImagePage();
+            } else if (currentPage === 9 && generatedImages.length === 10) {
+                renderFinalPage();
+            }
+        });
+        prevImageButton.addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                renderImagePage();
+            }
+        });
+        homeButton.addEventListener('click', () => {
+            showPage('main-page');
+        });
+        generateSingleImageButton.addEventListener('click', generateSingleImage);
+        backToHomeFromFinal.addEventListener('click', () => {
+            showPage('main-page');
+        });
+
+        window.addEventListener('load', () => {
+             showPage('login-page');
+        });
+    </script>
+</body>
+
+</html>
