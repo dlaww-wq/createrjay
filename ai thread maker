@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEN-AI 딥 리서치 캔버스</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background-color: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background-color: #a7a7a7; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #8c8c8c; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #6366f1; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #generateBtn:disabled, #modifyBtn:disabled { cursor: not-allowed; opacity: 0.7; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        .post-stage { border-left: 3px solid #ddd; padding-left: 1.5rem; position: relative; }
+        .post-stage::before { content: attr(data-stage); position: absolute; left: -14px; top: -2px; background-color: #a78bfa; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; }
+        .post-stage h4 { color: #8b5cf6; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div id="login-screen" class="flex items-center justify-center min-h-screen">
+        <div class="w-full max-w-sm bg-white p-8 rounded-2xl shadow-lg border border-gray-200 text-center mx-4">
+            <h1 class="text-2xl font-bold text-gray-800 mb-4">🚀 GEN-AI 딥 리서치</h1>
+            <p class="text-gray-500 mb-6">서비스를 이용하시려면 진입코드를 입력해주세요.</p>
+            <input type="password" id="login-code" class="w-full px-4 py-3 text-center bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="••••••••">
+            <p id="login-error" class="text-red-500 text-sm mt-2 h-5"></p>
+            <button id="login-btn" class="w-full mt-2 bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-all duration-300">입장하기</button>
+        </div>
+    </div>
+
+    <div id="main-app" class="hidden">
+        <div class="container mx-auto p-4 md:p-8">
+            <header class="text-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">🚀 GEN-AI 딥 리서치 캔버스</h1>
+                <p class="text-gray-500 mt-2">콘텐츠 입력 시 AI가 심층 분석하여 하나의 완성된 게시물을 생성합니다.</p>
+            </header>
+
+            <div class="flex flex-col lg:flex-row gap-8">
+                <div class="lg:w-1/3 bg-white p-6 rounded-2xl shadow-lg border border-gray-200 h-fit">
+                    <h2 class="text-xl font-semibold mb-4 border-b pb-2">1. 원본 콘텐츠 입력</h2>
+                    <div>
+                        <label for="topic" class="block text-sm font-medium text-gray-600">주제, 아이디어, 강의 대본 등 원본 콘텐츠를 입력해주세요.</label>
+                        <textarea id="topic" rows="8" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="여기에 분석을 원하는 긴 글이나 핵심 주제를 입력하세요. AI가 깊이 있게 분석하여 콘텐츠를 재창조합니다."></textarea>
+                    </div>
+                    <div class="mt-6 flex gap-2">
+                        <button id="resetBtn" class="w-1/3 bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-lg hover:bg-gray-300 transition-all duration-300">초기화</button>
+                        <button id="generateBtn" class="w-2/3 bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 shadow-md flex items-center justify-center gap-2">
+                            <span>콘텐츠 생성 시작</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="canvas" class="lg:w-2/3 space-y-6">
+                    <div id="initial-placeholder" class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200 text-center h-full flex items-center justify-center min-h-[300px]">
+                        <p class="text-gray-500">왼쪽에 콘텐츠를 입력하고 버튼을 누르면<br>AI 딥 리서치 및 콘텐츠 생성이 시작됩니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-10 right-10 bg-green-500 text-white py-2 px-4 rounded-lg shadow-xl transition-opacity duration-300 opacity-0"></div>
+    <textarea id="copyBuffer" class="absolute -left-full"></textarea>
+
+    <script>
+        // --- Elements ---
+        const loginScreen = document.getElementById('login-screen');
+        const mainApp = document.getElementById('main-app');
+        const loginCodeInput = document.getElementById('login-code');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('login-error');
+        const generateBtn = document.getElementById('generateBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const canvas = document.getElementById('canvas');
+        const topicInput = document.getElementById('topic');
+        const initialPlaceholder = document.getElementById('initial-placeholder');
+        const toast = document.getElementById('toast');
+        const copyBuffer = document.getElementById('copyBuffer');
+        const correctCode = 'thread2025';
+        
+        // --- State ---
+        let generatedData = { topic: '' };
+
+        // --- Login ---
+        function attemptLogin() {
+            if (loginCodeInput.value === correctCode) {
+                loginScreen.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                mainApp.classList.add('fade-in');
+            } else {
+                loginError.textContent = '진입코드가 올바르지 않습니다.';
+                loginCodeInput.value = '';
+                loginCodeInput.focus();
+                loginScreen.querySelector('div').classList.add('animate-shake');
+                setTimeout(() => { loginScreen.querySelector('div').classList.remove('animate-shake'); }, 500);
+            }
+        }
+        loginBtn.addEventListener('click', attemptLogin);
+        loginCodeInput.addEventListener('keyup', (e) => {
+            loginError.textContent = '';
+            if (e.key === 'Enter') attemptLogin();
+        });
+
+        // --- API Call ---
+        async function callDeepResearchAPI(topic, modification = "") {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            
+            const systemPrompt = `당신은 수많은 사람들의 고민을 듣고 공감하며 인사이트를 주는 '공감 전문가'이자, 자신의 경험을 진솔하게 녹여내어 깊은 울림을 주는 '콘텐츠 크리에이터'입니다. 당신의 글은 단순한 정보 전달이 아니라, 따뜻한 공감과 날카로운 전문성을 바탕으로 한 '가상의 개인적 경험담'입니다. 독자들이 '이거 완전 내 얘기인데?'라고 느끼며 당신의 이야기에 완전히 몰입하게 만들어야 합니다. 당신의 임무는 주어진 콘텐츠를 분석하여, 20-40대 한국인들을 위한 매우 신뢰도 높은 단일 소셜 미디어 게시물을 작성하는 것입니다. 반드시 다음 지침을 따라 JSON 형식으로 응답을 생성해주세요.`;
+            
+            let userQuery;
+            if (modification) {
+                userQuery = `기존 콘텐츠 주제: "${topic}"\n수정 요청: "${modification}"\n\n이전에 생성된 콘텐츠에 대해 다음 수정 요청을 반영하여, 딥 리서치 요약, 4단계 인지 구조 게시물, 이미지 프롬프트를 다시 생성해주세요.`;
+            } else {
+                userQuery = `분석할 원본 콘텐츠: "${topic}"\n\n이 콘텐츠에 대한 '딥 리서치'를 수행하고, 그 결과를 바탕으로 단일 게시물과 이미지 프롬프트를 생성해주세요.`;
+            }
+
+            userQuery += `\n\n딥 리서치 필수 포함 요소:\n1. 한국 문화/정서적 맥락: 20-40대 한국인이 깊이 공감할 수 있는 문화적, 정서적 포인트를 분석합니다.\n2. 심리학적 분석: 주제와 관련된 인간의 보편적인 심리나 행동 패턴을 설명하여 신뢰도를 높입니다.\n3. 통계/데이터 (시뮬레이션): 주장을 뒷받침할 수 있는 (실제 또는 가상의) 통계나 데이터를 제시합니다.\n\n게시물 작성 규칙:\n- 게시물 형식: 단 하나의 아티클형 게시물.\n- 글쓰기 스타일 (매우 중요): **반드시 당신의 개인적인 경험담 형식으로 글을 시작하고 전개해야 합니다.** '내가 예전에 OOO 때문에 정말 힘들었을 때가 있었는데,' 와 같이, 가상의 경험을 실제처럼 생생하게 묘사하여 독자의 몰입을 유도해줘.\n- 문체: **전문성과 위트를 겸비한 '친한 멘토' 같은 반말체.** 독자에게 '~한 적 없어?', '~이지 않아?' 같이 질문을 던지거나 '~해야 해' 같이 부드럽게 조언하는, 정중하면서도 친근한 반말을 사용해줘. 요즘 유행하는 이모지(✨, 🤔, 👀, 📌 등)를 적절히 활용하여 생동감을 더해줘.\n- 아래 4단계 인지 구조를 당신의 경험담 안에 자연스럽게 녹여내야 합니다.\n  - 1단계 (공감 및 문제 제기): 당신의 경험을 통해 독자가 '내 얘기잖아?'라고 느낄만한 상황을 제시합니다.\n  - 2단계 (심층 분석 및 인사이트): 경험 속에서 얻은 깨달음을 딥 리서치 결과(심리학, 통계 등)와 연결하여, 문제의 본질이나 새로운 관점을 제시합니다. (예: '그때 내가 느꼈던 감정이 심리학에서 말하는 OOO였더라고.')\n  - 3단계 (해결책 맛보기): 그래서 당신이 '실제로 효과를 봤던' 작지만 강력한 팁 하나만 공개하여 호기심을 자극합니다.\n  - 4단계 (가치 제안 및 CTA): 당신의 경험담이 일부에 불과하며, 더 근본적인 해결책이 있음을 암시하며 전체 강의/글을 보도록 유도하는 강력한 행동 유도 문구를 작성합니다.\n\n이미지 프롬프트 조건:\n- 게시물 전체의 핵심 메시지를 함축하는 단 하나의 프롬프트.\n- 스타일: '감성적이고 따뜻한 한국 웹툰 그림체'.\n- 인물: '한국인'.\n- 구체적인 상황, 구도, 표정 포함.\n- 최종 프롬프트는 영어로 작성.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            deepResearchSummary: { type: "STRING" },
+                            post: {
+                                type: "OBJECT",
+                                properties: {
+                                    stage1: { type: "STRING" },
+                                    stage2: { type: "STRING" },
+                                    stage3: { type: "STRING" },
+                                    stage4: { type: "STRING" }
+                                }
+                            },
+                            imagePrompt: { type: "STRING" }
+                        }
+                    }
+                }
+            };
+            
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API 요청 실패: ${response.status}`);
+                const result = await response.json();
+                const jsonText = result.candidates[0].content.parts[0].text;
+                return JSON.parse(jsonText);
+            } catch (error) {
+                console.error("API 호출 오류:", error);
+                return null;
+            }
+        }
+        
+        // --- Event Listeners ---
+        resetBtn.addEventListener('click', () => {
+            topicInput.value = '';
+            canvas.innerHTML = '';
+            canvas.appendChild(initialPlaceholder);
+            generatedData = { topic: '' };
+            topicInput.focus();
+        });
+
+        generateBtn.addEventListener('click', async () => {
+            const topic = topicInput.value;
+            if (!topic) {
+                alert('콘텐츠를 입력해주세요.');
+                return;
+            }
+            setLoading(generateBtn, true, '생성 중...');
+            renderLoadingState("AI가 딥 리서치를 진행 중입니다... (시간이 걸릴 수 있습니다)");
+            
+            const result = await callDeepResearchAPI(topic);
+
+            if (result) {
+                generatedData = { topic, ...result };
+                renderResult(result);
+            } else {
+                renderErrorState("콘텐츠 생성에 실패했습니다. 다시 시도해주세요.");
+            }
+            setLoading(generateBtn, false, '콘텐츠 생성 시작');
+        });
+        
+        // --- Rendering ---
+        function renderResult(data) {
+            canvas.innerHTML = '';
+            
+            const researchCard = document.createElement('div');
+            researchCard.className = 'fade-in bg-white p-6 rounded-2xl shadow-lg border border-gray-200';
+            researchCard.innerHTML = `
+                <h3 class="text-xl font-bold text-indigo-600 mb-4">🔬 AI 딥 리서치 요약</h3>
+                <p class="text-gray-700 bg-gray-50 p-4 rounded-lg border">${data.deepResearchSummary}</p>
+            `;
+
+            const postCard = document.createElement('div');
+            postCard.className = 'fade-in bg-white p-6 rounded-2xl shadow-lg border border-gray-200';
+            postCard.innerHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-indigo-600">✍️ 생성된 게시물</h3>
+                    <button class="copy-btn bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-gray-300 transition-colors" data-type="post">게시물 복사</button>
+                </div>
+                <div class="space-y-8">
+                    <div class="post-stage" data-stage="1">
+                        <h4 class="font-bold mb-2">1단계: 나의 경험 공유 (공감)</h4>
+                        <p class="text-gray-800 whitespace-pre-wrap leading-relaxed">${data.post.stage1}</p>
+                    </div>
+                    <div class="post-stage" data-stage="2">
+                        <h4 class="font-bold mb-2">2단계: 그때의 깨달음 (인사이트)</h4>
+                        <p class="text-gray-800 whitespace-pre-wrap leading-relaxed">${data.post.stage2}</p>
+                    </div>
+                    <div class="post-stage" data-stage="3">
+                        <h4 class="font-bold mb-2">3단계: 효과 봤던 방법 (맛보기)</h4>
+                        <p class="text-gray-800 whitespace-pre-wrap leading-relaxed">${data.post.stage3}</p>
+                    </div>
+                    <div class="post-stage" data-stage="4">
+                        <h4 class="font-bold mb-2">4단계: 더 깊은 이야기 (CTA)</h4>
+                        <p class="text-gray-800 whitespace-pre-wrap leading-relaxed">${data.post.stage4}</p>
+                    </div>
+                </div>
+            `;
+            
+            const imageCard = document.createElement('div');
+            imageCard.className = 'fade-in bg-white p-6 rounded-2xl shadow-lg border border-gray-200';
+            imageCard.innerHTML = `
+                 <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-indigo-600">🎨 이미지 AI 프롬프트</h3>
+                    <button class="copy-btn bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-gray-300 transition-colors" data-type="prompt">프롬프트 복사</button>
+                </div>
+                <textarea rows="4" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none" readonly>${data.imagePrompt}</textarea>
+            `;
+
+            const modificationCard = document.createElement('div');
+            modificationCard.className = 'fade-in bg-white p-6 rounded-2xl shadow-lg border border-gray-200';
+            modificationCard.innerHTML = `
+                <h3 class="text-xl font-bold text-indigo-600 mb-4">🔄 AI에게 수정 요청하기</h3>
+                <textarea id="modificationPrompt" rows="3" class="w-full p-3 bg-white border border-gray-300 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="수정을 원하는 내용을 구체적으로 입력해주세요.\n(예: 좀 더 전문적인 용어를 사용해줘, CTA를 더 강력하게 바꿔줘)"></textarea>
+                <button id="modifyBtn" class="mt-3 w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all duration-300 shadow-md flex items-center justify-center gap-2">
+                    <span>콘텐츠 수정하기</span>
+                </button>
+            `;
+
+            canvas.appendChild(researchCard);
+            canvas.appendChild(postCard);
+            canvas.appendChild(imageCard);
+            canvas.appendChild(modificationCard);
+            
+            // Add event listeners
+            canvas.querySelectorAll('.copy-btn').forEach(btn => btn.addEventListener('click', handleCopy));
+            canvas.querySelector('#modifyBtn').addEventListener('click', handleModification);
+        }
+        
+        function renderLoadingState(message) {
+            canvas.innerHTML = `<div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200 text-center h-full flex flex-col items-center justify-center min-h-[300px]"><div class="loader"></div><p class="text-gray-600 mt-4 font-semibold">${message}</p></div>`;
+        }
+        
+        function renderErrorState(message) {
+            canvas.innerHTML = `<div class="bg-white p-6 rounded-2xl shadow-lg border border-red-300 text-center"><p class="text-red-600 font-semibold">${message}</p></div>`;
+        }
+
+        // --- Handlers ---
+        async function handleModification() {
+            const modifyBtn = document.getElementById('modifyBtn');
+            const modificationRequest = document.getElementById('modificationPrompt').value;
+            if (!modificationRequest) {
+                alert('수정 요청사항을 입력해주세요.');
+                return;
+            }
+            setLoading(modifyBtn, true, '수정 중...');
+            renderLoadingState("AI가 요청사항을 반영하여 콘텐츠를 재구성 중입니다...");
+            
+            const result = await callDeepResearchAPI(generatedData.topic, modificationRequest);
+
+            if (result) {
+                generatedData = { topic: generatedData.topic, ...result };
+                renderResult(result);
+            } else {
+                renderErrorState("콘텐츠 수정에 실패했습니다. 다시 시도해주세요.");
+            }
+        }
+
+        function handleCopy(e) {
+            const type = e.target.dataset.type;
+            if (type === 'post') {
+                const postText = Object.values(generatedData.post).join('\n\n---\n\n');
+                copyToClipboard(postText, '게시물이 복사되었습니다!');
+            } else if (type === 'prompt') {
+                copyToClipboard(generatedData.imagePrompt, '이미지 프롬프트가 복사되었습니다!');
+            }
+        }
+        
+        // --- Utilities ---
+        function copyToClipboard(text, message) {
+            copyBuffer.value = text;
+            copyBuffer.select();
+            document.execCommand('copy');
+            showToast(message);
+        }
+
+        function setLoading(button, isLoading, text) {
+            button.disabled = isLoading;
+            button.innerHTML = isLoading ? `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>${text}</span>` : `<span>${text}</span>`;
+        }
+        
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => { toast.classList.add('opacity-0'); }, 2000);
+        }
+    </script>
+</body>
+</html>
+
